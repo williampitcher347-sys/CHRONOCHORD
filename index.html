@@ -6,7 +6,7 @@
 <title>Chronochord</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:flex;height:100vh;}
+body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:flex;height:100vh;position:relative;}
 #app{display:flex;width:100%;height:100%;flex-direction:row;}
 #sidebar{width:220px;background:#2f3136;display:flex;flex-direction:column;}
 #sidebar h2{text-align:center;padding:16px 0;font-weight:normal;font-size:1.2em;border-bottom:1px solid #202225;}
@@ -21,6 +21,7 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
 .message strong{color:#ffa500;cursor:pointer;}
 .timestamp{color:#72767d;font-size:0.75em;margin-left:6px;}
 #inputArea{display:flex;padding:10px;background:#40444b;border-top:1px solid #2f3136;}
+#usernamePrompt{padding:10px;border:none;border-radius:4px;background:#303339;color:white;width:150px;margin-right:8px;}
 #messageInput{flex:1;padding:10px;border:none;border-radius:4px;background:#303339;color:#fff;}
 #messageInput:focus{outline:none;}
 #sendButton{padding:10px 16px;margin-left:8px;border:none;border-radius:4px;background:#7289da;color:white;cursor:pointer;}
@@ -28,7 +29,9 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
 #privateChats{margin-top:10px;padding:10px;overflow-y:auto;flex:0 0 120px;border-top:1px solid #202225;}
 .privateChat{padding:6px;cursor:pointer;border-radius:4px;margin-bottom:4px;}
 .privateChat:hover,.privateChat.active{background:#393c43;}
-#usernamePrompt{padding:10px;border:none;border-radius:4px;background:#303339;color:white;width:150px;margin-right:8px;}
+#notifications{position:absolute;top:10px;right:10px;width:250px;z-index:1000;}
+.notification{background:#7289da;padding:10px;border-radius:4px;margin-bottom:6px;cursor:pointer;animation:fadeIn 0.3s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 <body>
@@ -53,9 +56,11 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
   </div>
 </div>
 
+<div id="notifications"></div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -73,16 +78,12 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-let username = '';
-let userId = '';
-let activeServer = '';
-let activeChannel = 'general';
-let activePrivate = '';
+let username='', userId='', activeServer='', activeChannel='general', activePrivate='';
+const notificationsDiv = document.getElementById('notifications');
 
 // ------------------ AUTH ------------------
 signInAnonymously(auth).then(async userCredential=>{
   userId = userCredential.user.uid;
-  // create default server if none exist
   const serversSnap = await get(ref(db,'servers'));
   if(!serversSnap.exists()){
     const newServer = push(ref(db,'servers'));
@@ -106,7 +107,6 @@ function initServers(){
       div.addEventListener('click',()=>switchServer(s,servers[s].name));
       serversDiv.appendChild(div);
     });
-    // auto-select first server
     if(!activeServer && Object.keys(servers)[0]) switchServer(Object.keys(servers)[0],servers[Object.keys(servers)[0]].name);
   });
 }
@@ -126,9 +126,7 @@ document.getElementById('serverSearch').addEventListener('input', ()=>{
 });
 
 function switchServer(id,name){
-  activeServer=id;
-  activeChannel='general';
-  activePrivate='';
+  activeServer=id; activeChannel='general'; activePrivate='';
   document.getElementById('chatHeader').textContent='#'+activeChannel+' - '+name;
   loadMessages();
 }
@@ -139,7 +137,6 @@ document.getElementById('sendButton').addEventListener('click', sendMessage);
 function loadMessages(){
   const messagesDiv = document.getElementById('messages');
   messagesDiv.innerHTML='';
-
   if(activePrivate){
     const chatRef = ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
     onValue(chatRef,(snapshot)=>{
@@ -171,6 +168,7 @@ function loadMessages(){
   }
 }
 
+// ------------------ SEND MESSAGE ------------------
 function sendMessage(){
   const input = document.getElementById('messageInput');
   const nameInput = document.getElementById('usernamePrompt');
@@ -185,9 +183,19 @@ function sendMessage(){
     set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
   } else if(activeServer){
     const chatRef = ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
-    const newMsgRef = push(chatRef);
-    set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
+    const newMsgRef = push(chatRef,{username,text:input.value.trim(),userId,timestamp:time});
+    // check for private notifications: any message user mentions can be notified
+    Object.values({[userId]:username}).forEach(u=>{
+      // not sending notifications for public chat now
+    });
   }
+
+  // push notifications to other users in private chats
+  if(activePrivate){
+    const notifRef = ref(db,`notifications/${activePrivate}`);
+    const newNotifRef = push(notifRef,{fromUser:username,fromId:userId,message:input.value,timestamp:time});
+  }
+
   input.value='';
 }
 
@@ -208,20 +216,40 @@ function initPrivateChats(){
       privateDiv.appendChild(div);
     });
   });
+
+  // listen to incoming notifications
+  const notifRef = ref(db,`notifications/${userId}`);
+  onValue(notifRef,(snapshot)=>{
+    const notifs = snapshot.val()||{};
+    Object.keys(notifs).forEach(key=>{
+      const n = notifs[key];
+      showNotification(n.fromUser, n.message, n.fromId);
+      // remove after showing
+      set(ref(db,`notifications/${userId}/${key}`), null);
+    });
+  });
 }
 
 function switchPrivateChat(uid,name){
-  activePrivate=uid;
-  activeServer='';
-  activeChannel='';
+  activePrivate=uid; activeServer=''; activeChannel='';
   document.getElementById('chatHeader').textContent='Private Chat with '+name;
   loadMessages();
 }
 
-// ------------------ CLICK USERNAME TO CHAT ------------------
+// ------------------ CLICK USERNAME ------------------
 function startPrivateChat(uid,name){
-  if(uid===userId) return; // can't chat with yourself
+  if(uid===userId) return;
   switchPrivateChat(uid,name);
+}
+
+// ------------------ NOTIFICATIONS ------------------
+function showNotification(fromName,message,fromId){
+  const div = document.createElement('div');
+  div.className='notification';
+  div.textContent=`New message from ${fromName}: ${message}`;
+  div.addEventListener('click', ()=>switchPrivateChat(fromId,fromName));
+  notificationsDiv.appendChild(div);
+  setTimeout(()=>{div.remove();},6000);
 }
 
 </script>
