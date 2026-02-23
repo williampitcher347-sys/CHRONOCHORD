@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronochord</title>
+<title>Chronochord Fresh</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:flex;height:100vh;overflow:hidden;}
@@ -70,10 +70,9 @@ body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:fle
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, get, update, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
   authDomain: "chronochordbackend.firebaseapp.com",
@@ -93,6 +92,7 @@ let username='', userId='', activeServer='', activeRoom='Chat 1';
 
 const unlockScreen = document.getElementById('unlockScreen');
 const unlockBtn = document.getElementById('unlockBtn');
+
 unlockBtn.addEventListener('click', ()=>{
   const code = document.getElementById('websiteCode').value.trim();
   if(code==='2013'){
@@ -104,30 +104,14 @@ unlockBtn.addEventListener('click', ()=>{
   }
 });
 
-function startApp(){
+async function startApp(){
   signInAnonymously(auth).then(async userCredential=>{
     userId = userCredential.user.uid;
 
-    // Check all servers have default rooms
-    const serversSnap = await get(ref(db,'servers'));
-    if(!serversSnap.exists()){
-      const newServer = push(ref(db,'servers'));
-      await set(newServer,{
-        name:'Default Server',
-        channels:{'Chat 1':{messages:{}},'Chat 2':{messages:{}},'Chat 3':{messages:{}}}
-      });
-    } else {
-      const servers = serversSnap.val();
-      for(const s of Object.keys(servers)){
-        const ch = servers[s].channels||{};
-        let changed=false;
-        ['Chat 1','Chat 2','Chat 3'].forEach(r=>{
-          if(!ch[r]){ ch[r]={messages:{}}; changed=true; }
-        });
-        if(changed) update(ref(db,'servers/'+s), {channels:ch});
-      }
-    }
+    // Remove all existing servers for fresh start
+    await remove(ref(db,'servers'));
 
+    // Initialize with empty servers
     initServers();
   });
 }
@@ -161,22 +145,34 @@ document.getElementById('createServerBtn').addEventListener('click', async ()=>{
   });
 });
 
-function enterServer(id,serverObj){
-  activeServer=id;
-  activeRoom='Chat 1';
+function enterServer(id, serverObj){
+  activeServer = id;
+
+  // Ensure channels exist
+  if(!serverObj.channels) serverObj.channels = {};
+  ['Chat 1','Chat 2','Chat 3'].forEach(r=>{
+    if(!serverObj.channels[r]) serverObj.channels[r] = { messages:{} };
+  });
+
+  activeRoom = 'Chat 1';
   renderRooms(serverObj.channels);
-  document.getElementById('chatHeader').textContent=activeRoom+' - '+serverObj.name;
+  document.getElementById('chatHeader').textContent = activeRoom + ' - ' + serverObj.name;
+
+  // Save fixed channels back to DB
+  update(ref(db,'servers/'+id), { channels: serverObj.channels });
+
   loadMessages();
 }
 
 function renderRooms(channels){
   const roomsDiv = document.getElementById('rooms');
-  roomsDiv.innerHTML='';
+  roomsDiv.innerHTML = '';
+  channels = channels || {};
   Object.keys(channels).forEach(room=>{
     const div = document.createElement('div');
-    div.className='room'+(room===activeRoom?' active':'');
-    div.textContent=room;
-    div.addEventListener('click',()=>switchRoom(room));
+    div.className = 'room' + (room === activeRoom ? ' active' : '');
+    div.textContent = room;
+    div.addEventListener('click', ()=>switchRoom(room));
     roomsDiv.appendChild(div);
   });
 }
