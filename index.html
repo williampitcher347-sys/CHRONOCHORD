@@ -35,18 +35,20 @@
 </head>
 <body>
 
+<!-- Login -->
 <div id="login">
   <h1>Chronochord</h1>
   <input type="text" id="usernameInput" placeholder="Enter your username">
-  <button onclick="login()">Join Chronochord</button>
+  <button id="loginBtn">Join Chronochord</button>
 </div>
 
+<!-- App -->
 <div id="app">
   <div id="sidebar">
     <h2>Servers</h2>
-    <input type="text" id="serverSearch" placeholder="Search server..." oninput="filterServers()">
+    <input type="text" id="serverSearch" placeholder="Search server...">
     <div id="servers"></div>
-    <button id="createServerBtn" onclick="createServer()">+ Create Server</button>
+    <button id="createServerBtn">+ Create Server</button>
     <h2 style="margin-top:10px;padding-left:10px;font-size:1em;">Private Chats</h2>
     <div id="privateChats"></div>
   </div>
@@ -55,17 +57,17 @@
     <div id="messages"></div>
     <div id="inputArea">
       <input type="text" id="messageInput" placeholder="Type a message...">
-      <button id="sendButton" onclick="sendMessage()">Send</button>
+      <button id="sendButton">Send</button>
     </div>
   </div>
 </div>
 
-<!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
   authDomain: "chronochordbackend.firebaseapp.com",
@@ -87,20 +89,21 @@ let activeServer = '';
 let activeChannel = 'general';
 let activePrivate = '';
 
-function login(){
+// ------------------------ LOGIN ------------------------
+document.getElementById('loginBtn').addEventListener('click', async () => {
   const input = document.getElementById('usernameInput');
   if(!input.value.trim()) return alert('Enter a username!');
   username = input.value.trim();
-  signInAnonymously(auth).then((userCredential)=>{
-    userId = userCredential.user.uid;
-    document.getElementById('login').style.display='none';
-    document.getElementById('app').style.display='flex';
-    initServers();
-    initPrivateChats();
-  });
-}
+  const userCredential = await signInAnonymously(auth);
+  userId = userCredential.user.uid;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  await set(ref(db,`users/${userId}`),{username});
+  initServers();
+  initPrivateChats();
+});
 
-// Servers
+// ------------------------ SERVERS ------------------------
 function initServers(){
   const serversRef = ref(db,'servers');
   onValue(serversRef,(snapshot)=>{
@@ -111,19 +114,26 @@ function initServers(){
       const div = document.createElement('div');
       div.className='server'+(s===activeServer?' active':'');
       div.textContent=servers[s].name;
-      div.onclick=()=>switchServer(s,servers[s].name);
+      div.addEventListener('click',()=>switchServer(s,servers[s].name));
       serversDiv.appendChild(div);
     });
     if(!activeServer && Object.keys(servers)[0]) switchServer(Object.keys(servers)[0],servers[Object.keys(servers)[0]].name);
   });
 }
 
-function createServer(){
+document.getElementById('createServerBtn').addEventListener('click', ()=>{
   const name = prompt('Server name:');
   if(!name) return;
   const newServerRef = push(ref(db,'servers'));
   set(newServerRef,{name,channels:{general:{messages:{}}}});
-}
+});
+
+document.getElementById('serverSearch').addEventListener('input', ()=>{
+  const filter = document.getElementById('serverSearch').value.toLowerCase();
+  document.querySelectorAll('.server').forEach(s=>{
+    s.style.display = s.textContent.toLowerCase().includes(filter)?'block':'none';
+  });
+});
 
 function switchServer(id,name){
   activeServer=id;
@@ -133,21 +143,24 @@ function switchServer(id,name){
   loadMessages();
 }
 
-// Messages
+// ------------------------ MESSAGES ------------------------
+document.getElementById('sendButton').addEventListener('click', sendMessage);
+
 function loadMessages(){
+  const messagesDiv=document.getElementById('messages');
+  messagesDiv.innerHTML='';
+
   if(activePrivate){
     const chatRef = ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
     onValue(chatRef,(snapshot)=>{
       const msgs = snapshot.val()||{};
-      const messagesDiv=document.getElementById('messages');
       messagesDiv.innerHTML=Object.values(msgs).map(m=>`<div class="message"><strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}</div>`).join('');
       messagesDiv.scrollTop=messagesDiv.scrollHeight;
     });
-  } else {
+  } else if(activeServer){
     const chatRef = ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
     onValue(chatRef,(snapshot)=>{
       const msgs = snapshot.val()||{};
-      const messagesDiv=document.getElementById('messages');
       messagesDiv.innerHTML=Object.values(msgs).map(m=>`<div class="message"><strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}</div>`).join('');
       messagesDiv.scrollTop=messagesDiv.scrollHeight;
     });
@@ -162,7 +175,7 @@ function sendMessage(){
     const chatRef=ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
     const newMsgRef=push(chatRef);
     set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
-  } else {
+  } else if(activeServer){
     const chatRef=ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
     const newMsgRef=push(chatRef);
     set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
@@ -170,18 +183,9 @@ function sendMessage(){
   input.value='';
 }
 
-// Server search
-function filterServers(){
-  const filter=document.getElementById('serverSearch').value.toLowerCase();
-  document.querySelectorAll('.server').forEach(s=>{
-    s.style.display=s.textContent.toLowerCase().includes(filter)?'block':'none';
-  });
-}
-
-// Private Chats
+// ------------------------ PRIVATE CHATS ------------------------
 function initPrivateChats(){
-  const usersRef=ref(db,'users');
-  set(ref(db,`users/${userId}`),{username});
+  const usersRef = ref(db,'users');
   onValue(usersRef,(snapshot)=>{
     const allUsers=snapshot.val()||{};
     const privateDiv=document.getElementById('privateChats');
@@ -191,7 +195,7 @@ function initPrivateChats(){
       const div=document.createElement('div');
       div.className='privateChat'+(activePrivate===uid?' active':'');
       div.textContent=allUsers[uid].username;
-      div.onclick=()=>switchPrivateChat(uid,allUsers[uid].username);
+      div.addEventListener('click',()=>switchPrivateChat(uid,allUsers[uid].username));
       privateDiv.appendChild(div);
     });
   });
@@ -206,6 +210,5 @@ function switchPrivateChat(uid,name){
 }
 
 </script>
-
 </body>
 </html>
