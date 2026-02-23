@@ -3,32 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronochord</title>
+<title>Chronochord - Blue/Green UI</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:flex;height:100vh;position:relative;}
-#app{display:flex;width:100%;height:100%;flex-direction:row;}
-#sidebar{width:220px;background:#2f3136;display:flex;flex-direction:column;}
-#sidebar h2{text-align:center;padding:16px 0;font-weight:normal;font-size:1.2em;border-bottom:1px solid #202225;}
-#serverSearch{padding:8px 10px;margin:10px;border-radius:4px;border:none;width:calc(100% - 40px);}
-#servers{flex:1;overflow-y:auto;padding:10px;}
-.server{padding:8px 12px;border-radius:4px;margin-bottom:4px;cursor:pointer;}
-.server:hover,.server.active{background:#393c43;}
-#rooms{margin-top:10px;padding:10px;flex:0 0 auto;}
-.room{padding:6px;cursor:pointer;border-radius:4px;margin-bottom:4px;}
-.room:hover,.room.active{background:#393c43;}
-#main{flex:1;display:flex;flex-direction:column;}
-#chatHeader{padding:16px;background:#2f3136;border-bottom:1px solid #202225;font-weight:bold;}
+body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:flex;height:100vh;overflow:hidden;}
+#app{display:flex;width:100%;height:100%;flex-direction:row;transition:all 0.3s;}
+#sidebar{width:200px;background:#1e3a8a;display:flex;flex-direction:column;transition:all 0.3s;}
+#sidebar h2{text-align:center;padding:12px 0;font-weight:normal;font-size:1.1em;border-bottom:1px solid #0d1117;}
+#serverSearch{padding:6px 8px;margin:8px;border-radius:4px;border:none;width:calc(100% - 32px);}
+#servers{flex:1;overflow-y:auto;padding:8px;}
+.server{padding:6px 10px;border-radius:4px;margin-bottom:4px;cursor:pointer;transition:all 0.2s;}
+.server:hover,.server.active{background:#2563eb;}
+#rooms{margin-top:8px;padding:8px;}
+.room{padding:5px 10px;cursor:pointer;border-radius:4px;margin-bottom:4px;transition:all 0.2s;}
+.room:hover,.room.active{background:#10b981;}
+#main{flex:1;display:flex;flex-direction:column;transition:all 0.3s;}
+#chatHeader{padding:14px;background:#1e40af;border-bottom:1px solid #0d1117;font-weight:bold;transition:all 0.3s;}
 #messages{flex:1;padding:12px;overflow-y:auto;}
-.message{margin-bottom:12px;}
-.message strong{color:#ffa500;}
-.timestamp{color:#72767d;font-size:0.75em;margin-left:6px;}
-#inputArea{display:flex;padding:10px;background:#40444b;border-top:1px solid #2f3136;}
-#usernamePrompt{padding:10px;border:none;border-radius:4px;background:#303339;color:white;width:150px;margin-right:8px;}
-#messageInput{flex:1;padding:10px;border:none;border-radius:4px;background:#303339;color:#fff;}
-#messageInput:focus{outline:none;}
-#sendButton{padding:10px 16px;margin-left:8px;border:none;border-radius:4px;background:#7289da;color:white;cursor:pointer;}
-#createServerBtn{padding:6px 10px;border:none;border-radius:4px;background:#7289da;color:white;margin-left:8px;}
+.message{margin-bottom:10px;max-width:70%;padding:8px 12px;border-radius:12px;animation:fadeIn 0.3s;}
+.message.self{background:#10b981;margin-left:auto;}
+.message.other{background:#2563eb;margin-right:auto;}
+.timestamp{display:block;font-size:0.7em;color:#d1d5db;margin-top:2px;text-align:right;}
+#inputArea{display:flex;padding:8px;background:#1e40af;border-top:1px solid #0d1117;}
+#usernamePrompt{padding:6px;border:none;border-radius:4px;background:#1e3a8a;color:white;width:120px;margin-right:6px;}
+#messageInput{flex:1;padding:6px;border:none;border-radius:4px;background:#1e3a8a;color:#fff;}
+#messageInput:focus,#usernamePrompt:focus{outline:none;}
+#sendButton,#createServerBtn{padding:6px 10px;margin-left:6px;border:none;border-radius:4px;background:#2563eb;color:white;cursor:pointer;transition:all 0.2s;}
+#sendButton:hover,#createServerBtn:hover{background:#1d4ed8;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-thumb{background:#2563eb;border-radius:4px;}
+::-webkit-scrollbar-track{background:#1e3a8a;}
 </style>
 </head>
 <body>
@@ -38,11 +43,11 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
     <h2>Servers</h2>
     <input type="text" id="serverSearch" placeholder="Search server...">
     <div id="servers"></div>
-    <button id="createServerBtn">+ Create Server</button>
+    <button id="createServerBtn">+ Server</button>
     <div id="rooms"></div>
   </div>
   <div id="main">
-    <div id="chatHeader">#general</div>
+    <div id="chatHeader">Chat 1</div>
     <div id="messages"></div>
     <div id="inputArea">
       <input type="text" id="usernamePrompt" placeholder="Your name">
@@ -72,28 +77,27 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
-let username='', userId='', activeServer='', activeRoom='general';
+let username='', userId='', activeServer='', activeRoom='Chat 1';
 
-// ---------------- AUTH ----------------
+// ---------- AUTH ----------
 signInAnonymously(auth).then(async userCredential=>{
   userId = userCredential.user.uid;
   const serversSnap = await get(ref(db,'servers'));
   if(!serversSnap.exists()){
-    // create default server with 3 rooms
     const newServer = push(ref(db,'servers'));
     await set(newServer,{
       name:'Default Server',
       channels:{
-        general:{messages:{}},
-        random:{messages:{}},
-        games:{messages:{}}
+        'Chat 1':{messages:{}},
+        'Chat 2':{messages:{}},
+        'Chat 3':{messages:{}}
       }
     });
   }
   initServers();
 });
 
-// ---------------- SERVERS ----------------
+// ---------- SERVERS ----------
 function initServers(){
   const serversRef = ref(db,'servers');
   onValue(serversRef,(snapshot)=>{
@@ -121,9 +125,9 @@ document.getElementById('createServerBtn').addEventListener('click', async ()=>{
   await set(newServerRef,{
     name,
     channels:{
-      general:{messages:{}},
-      random:{messages:{}},
-      games:{messages:{}}
+      'Chat 1':{messages:{}},
+      'Chat 2':{messages:{}},
+      'Chat 3':{messages:{}}
     }
   });
 });
@@ -138,9 +142,9 @@ document.getElementById('serverSearch').addEventListener('input', ()=>{
 
 function switchServer(id,name,channels){
   activeServer=id;
-  activeRoom='general';
+  activeRoom='Chat 1';
   renderRooms(channels);
-  document.getElementById('chatHeader').textContent='#'+activeRoom+' - '+name;
+  document.getElementById('chatHeader').textContent=activeRoom+' - '+name;
   loadMessages();
 }
 
@@ -162,11 +166,11 @@ function switchRoom(room){
   document.querySelectorAll('.room').forEach(r=>{
     if(r.textContent===room) r.classList.add('active');
   });
-  document.getElementById('chatHeader').textContent='#'+activeRoom;
+  document.getElementById('chatHeader').textContent=activeRoom;
   loadMessages();
 }
 
-// ---------------- MESSAGES ----------------
+// ---------- MESSAGES ----------
 document.getElementById('sendButton').addEventListener('click', sendMessage);
 
 function loadMessages(){
@@ -179,8 +183,8 @@ function loadMessages(){
       messagesDiv.innerHTML='';
       Object.values(msgs).forEach(m=>{
         const div = document.createElement('div');
-        div.className='message';
-        div.innerHTML=`<strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}`;
+        div.className='message '+(m.userId===userId?'self':'other');
+        div.innerHTML=`<strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span><br>${m.text}`;
         messagesDiv.appendChild(div);
       });
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -203,7 +207,6 @@ function sendMessage(){
   }
   input.value='';
 }
-
 </script>
 </body>
 </html>
