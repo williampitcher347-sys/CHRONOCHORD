@@ -18,7 +18,7 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
 #chatHeader{padding:16px;background:#2f3136;border-bottom:1px solid #202225;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
 #messages{flex:1;padding:12px;overflow-y:auto;}
 .message{margin-bottom:12px;}
-.message strong{color:#ffa500;}
+.message strong{color:#ffa500;cursor:pointer;}
 .timestamp{color:#72767d;font-size:0.75em;margin-left:6px;}
 #inputArea{display:flex;padding:10px;background:#40444b;border-top:1px solid #2f3136;}
 #messageInput{flex:1;padding:10px;border:none;border-radius:4px;background:#303339;color:#fff;}
@@ -55,7 +55,7 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -79,14 +79,20 @@ let activeServer = '';
 let activeChannel = 'general';
 let activePrivate = '';
 
-// ------------------------ AUTH ------------------------
-signInAnonymously(auth).then(userCredential => {
+// ------------------ AUTH ------------------
+signInAnonymously(auth).then(async userCredential=>{
   userId = userCredential.user.uid;
+  // create default server if none exist
+  const serversSnap = await get(ref(db,'servers'));
+  if(!serversSnap.exists()){
+    const newServer = push(ref(db,'servers'));
+    await set(newServer,{name:'Default Server',channels:{general:{messages:{}}}});
+  }
   initServers();
   initPrivateChats();
 });
 
-// ------------------------ SERVERS ------------------------
+// ------------------ SERVERS ------------------
 function initServers(){
   const serversRef = ref(db,'servers');
   onValue(serversRef,(snapshot)=>{
@@ -100,15 +106,16 @@ function initServers(){
       div.addEventListener('click',()=>switchServer(s,servers[s].name));
       serversDiv.appendChild(div);
     });
+    // auto-select first server
     if(!activeServer && Object.keys(servers)[0]) switchServer(Object.keys(servers)[0],servers[Object.keys(servers)[0]].name);
   });
 }
 
-document.getElementById('createServerBtn').addEventListener('click', ()=>{
+document.getElementById('createServerBtn').addEventListener('click', async ()=>{
   const name = prompt('Server name:');
   if(!name) return;
   const newServerRef = push(ref(db,'servers'));
-  set(newServerRef,{name,channels:{general:{messages:{}}}});
+  await set(newServerRef,{name,channels:{general:{messages:{}}}});
 });
 
 document.getElementById('serverSearch').addEventListener('input', ()=>{
@@ -126,62 +133,78 @@ function switchServer(id,name){
   loadMessages();
 }
 
-// ------------------------ MESSAGES ------------------------
+// ------------------ MESSAGES ------------------
 document.getElementById('sendButton').addEventListener('click', sendMessage);
 
 function loadMessages(){
-  const messagesDiv=document.getElementById('messages');
+  const messagesDiv = document.getElementById('messages');
   messagesDiv.innerHTML='';
+
   if(activePrivate){
     const chatRef = ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
     onValue(chatRef,(snapshot)=>{
       const msgs = snapshot.val()||{};
-      messagesDiv.innerHTML=Object.values(msgs).map(m=>`<div class="message"><strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}</div>`).join('');
-      messagesDiv.scrollTop=messagesDiv.scrollHeight;
+      messagesDiv.innerHTML='';
+      Object.values(msgs).forEach(m=>{
+        const div = document.createElement('div');
+        div.className='message';
+        div.innerHTML=`<strong class="username">${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}`;
+        div.querySelector('.username').addEventListener('click', ()=>startPrivateChat(m.userId,m.username));
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
   } else if(activeServer){
     const chatRef = ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
     onValue(chatRef,(snapshot)=>{
       const msgs = snapshot.val()||{};
-      messagesDiv.innerHTML=Object.values(msgs).map(m=>`<div class="message"><strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}</div>`).join('');
-      messagesDiv.scrollTop=messagesDiv.scrollHeight;
+      messagesDiv.innerHTML='';
+      Object.values(msgs).forEach(m=>{
+        const div = document.createElement('div');
+        div.className='message';
+        div.innerHTML=`<strong class="username">${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}`;
+        div.querySelector('.username').addEventListener('click', ()=>startPrivateChat(m.userId,m.username));
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
   }
 }
 
 function sendMessage(){
-  const input=document.getElementById('messageInput');
-  const nameInput=document.getElementById('usernamePrompt');
+  const input = document.getElementById('messageInput');
+  const nameInput = document.getElementById('usernamePrompt');
   if(!input.value.trim()) return;
-  if(!nameInput.value.trim()) return alert("Enter your display name!");
-  username=nameInput.value.trim();
-  const time=Date.now();
+  if(!nameInput.value.trim()) return alert('Enter your display name!');
+  username = nameInput.value.trim();
+  const time = Date.now();
+
   if(activePrivate){
-    const chatRef=ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
-    const newMsgRef=push(chatRef);
+    const chatRef = ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
+    const newMsgRef = push(chatRef);
     set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
   } else if(activeServer){
-    const chatRef=ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
-    const newMsgRef=push(chatRef);
+    const chatRef = ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
+    const newMsgRef = push(chatRef);
     set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
   }
   input.value='';
 }
 
-// ------------------------ PRIVATE CHATS ------------------------
+// ------------------ PRIVATE CHATS ------------------
 function initPrivateChats(){
   const usersRef = ref(db,'users');
   set(ref(db,`users/${userId}`),{username});
   onValue(usersRef,(snapshot)=>{
-    const allUsers=snapshot.val()||{};
-    const privateDiv=document.getElementById('privateChats');
+    const allUsers = snapshot.val()||{};
+    const privateDiv = document.getElementById('privateChats');
     privateDiv.innerHTML='';
     Object.keys(allUsers).forEach(uid=>{
       if(uid===userId) return;
-      const div=document.createElement('div');
+      const div = document.createElement('div');
       div.className='privateChat'+(activePrivate===uid?' active':'');
       div.textContent=allUsers[uid].username;
-      div.addEventListener('click',()=>switchPrivateChat(uid,allUsers[uid].username));
+      div.addEventListener('click', ()=>switchPrivateChat(uid,allUsers[uid].username));
       privateDiv.appendChild(div);
     });
   });
@@ -193,6 +216,12 @@ function switchPrivateChat(uid,name){
   activeChannel='';
   document.getElementById('chatHeader').textContent='Private Chat with '+name;
   loadMessages();
+}
+
+// ------------------ CLICK USERNAME TO CHAT ------------------
+function startPrivateChat(uid,name){
+  if(uid===userId) return; // can't chat with yourself
+  switchPrivateChat(uid,name);
 }
 
 </script>
