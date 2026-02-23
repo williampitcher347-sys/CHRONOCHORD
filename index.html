@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronochord Locked Servers</title>
+<title>Chronochord</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:flex;height:100vh;overflow:hidden;}
@@ -21,8 +21,8 @@ body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:fle
 #chatHeader{padding:12px;background:#1e40af;border-bottom:1px solid #0d1117;font-weight:bold;transition:all 0.3s;font-size:0.95em;}
 #messages{flex:1;padding:8px;overflow-y:auto;font-size:0.85em;}
 .message{margin-bottom:6px;max-width:70%;padding:6px 10px;border-radius:10px;animation:fadeIn 0.3s;font-size:0.85em;}
-.message.self{background:#10b981;margin-left:auto;}
-.message.other{background:#2563eb;margin-right:auto;}
+.message.self{background:#10b981;margin-left:auto;color:#fff;}
+.message.other{background:#6b7280;margin-right:auto;color:#fff;}
 .timestamp{display:block;font-size:0.65em;color:#d1d5db;margin-top:1px;text-align:right;}
 #inputArea{display:flex;padding:6px;background:#1e40af;border-top:1px solid #0d1117;}
 #usernamePrompt{padding:4px;border:none;border-radius:4px;background:#1e3a8a;color:white;width:100px;margin-right:4px;font-size:0.85em;}
@@ -131,7 +131,9 @@ document.getElementById('createServerBtn').addEventListener('click', async ()=>{
   }
   const newServerRef = push(ref(db,'servers'));
   await set(newServerRef,{
-    name, locked, code,
+    name,
+    locked,
+    code: locked?code:'',
     channels:{'Chat 1':{messages:{}},'Chat 2':{messages:{}},'Chat 3':{messages:{}}}
   });
 });
@@ -144,6 +146,7 @@ function enterServer(id,serverObj){
       input = prompt('Incorrect code! Enter 4-digit code:');
     }
   }
+  // SERVER ACCESS GRANTED
   activeServer=id;
   activeRoom='Chat 1';
   renderRooms(serverObj.channels);
