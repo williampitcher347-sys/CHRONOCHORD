@@ -25,10 +25,10 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
 #messageInput{flex:1;padding:10px;border:none;border-radius:4px;background:#303339;color:#fff;}
 #messageInput:focus{outline:none;}
 #sendButton{padding:10px 16px;margin-left:8px;border:none;border-radius:4px;background:#7289da;color:white;cursor:pointer;}
-#createServerBtn{padding:6px 10px;border:none;border-radius:4px;background:#7289da;color:white;cursor:pointer;margin-left:8px;}
-#privateChats{margin-top:10px;padding:10px;overflow-y:auto;flex:0 0 120px;border-top:1px solid #202225;}
-.privateChat{padding:6px;cursor:pointer;border-radius:4px;margin-bottom:4px;}
-.privateChat:hover,.privateChat.active{background:#393c43;}
+#createServerBtn{padding:6px 10px;border:none;border-radius:4px;background:#7289da;color:white;margin-left:8px;}
+#privateChatsHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 10px;}
+#newChatBtn{padding:4px 6px;background:#7289da;border:none;border-radius:4px;color:white;cursor:pointer;}
+#privateChats{margin-top:0;padding:10px;overflow-y:auto;flex:1;border-top:1px solid #202225;}
 #notifications{position:absolute;top:10px;right:10px;width:250px;z-index:1000;}
 .notification{background:#7289da;padding:10px;border-radius:4px;margin-bottom:6px;cursor:pointer;animation:fadeIn 0.3s;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
@@ -42,7 +42,10 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
     <input type="text" id="serverSearch" placeholder="Search server...">
     <div id="servers"></div>
     <button id="createServerBtn">+ Create Server</button>
-    <h2 style="margin-top:10px;padding-left:10px;font-size:1em;">Private Chats</h2>
+    <div id="privateChatsHeader">
+      <h2>Private Chats</h2>
+      <button id="newChatBtn">+ New</button>
+    </div>
     <div id="privateChats"></div>
   </div>
   <div id="main">
@@ -60,7 +63,7 @@ body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:fle
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -168,7 +171,6 @@ function loadMessages(){
   }
 }
 
-// ------------------ SEND MESSAGE ------------------
 function sendMessage(){
   const input = document.getElementById('messageInput');
   const nameInput = document.getElementById('usernamePrompt');
@@ -181,25 +183,37 @@ function sendMessage(){
     const chatRef = ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
     const newMsgRef = push(chatRef);
     set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
+
+    // create notification for recipient
+    const notifRef = ref(db,`notifications/${activePrivate}`);
+    const newNotif = push(notifRef);
+    set(newNotif,{fromUser:username,fromId:userId,message:input.value,timestamp:time});
   } else if(activeServer){
     const chatRef = ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
-    const newMsgRef = push(chatRef,{username,text:input.value.trim(),userId,timestamp:time});
-    // check for private notifications: any message user mentions can be notified
-    Object.values({[userId]:username}).forEach(u=>{
-      // not sending notifications for public chat now
-    });
-  }
-
-  // push notifications to other users in private chats
-  if(activePrivate){
-    const notifRef = ref(db,`notifications/${activePrivate}`);
-    const newNotifRef = push(notifRef,{fromUser:username,fromId:userId,message:input.value,timestamp:time});
+    const newMsgRef = push(chatRef);
+    set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
   }
 
   input.value='';
 }
 
 // ------------------ PRIVATE CHATS ------------------
+document.getElementById('newChatBtn').addEventListener('click', async ()=>{
+  const targetName = prompt('Enter username for new private chat:');
+  if(!targetName) return;
+  // find user by username
+  const usersSnap = await get(ref(db,'users'));
+  const users = usersSnap.val()||{};
+  let targetId=null;
+  Object.keys(users).forEach(uid=>{
+    if(users[uid].username===targetName) targetId=uid;
+  });
+  if(!targetId) return alert('User not found');
+  // add private chat entry on both users
+  set(ref(db,`privateChats/${[userId,targetId].sort().join('_')}`),{messages:{}});
+  switchPrivateChat(targetId,targetName);
+});
+
 function initPrivateChats(){
   const usersRef = ref(db,'users');
   set(ref(db,`users/${userId}`),{username});
@@ -217,14 +231,12 @@ function initPrivateChats(){
     });
   });
 
-  // listen to incoming notifications
   const notifRef = ref(db,`notifications/${userId}`);
   onValue(notifRef,(snapshot)=>{
     const notifs = snapshot.val()||{};
     Object.keys(notifs).forEach(key=>{
       const n = notifs[key];
       showNotification(n.fromUser, n.message, n.fromId);
-      // remove after showing
       set(ref(db,`notifications/${userId}/${key}`), null);
     });
   });
@@ -236,13 +248,11 @@ function switchPrivateChat(uid,name){
   loadMessages();
 }
 
-// ------------------ CLICK USERNAME ------------------
 function startPrivateChat(uid,name){
   if(uid===userId) return;
   switchPrivateChat(uid,name);
 }
 
-// ------------------ NOTIFICATIONS ------------------
 function showNotification(fromName,message,fromId){
   const div = document.createElement('div');
   div.className='notification';
