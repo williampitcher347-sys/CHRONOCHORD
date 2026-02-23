@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chronochord</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Segoe UI',sans-serif;background:#202225;color:#fff;display:flex;height:100vh;}
+  #login{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;width:100%;}
+  #login input{padding:10px;border-radius:4px;border:none;margin-bottom:12px;width:220px;}
+  #login button{padding:10px 16px;border-radius:4px;border:none;background:#7289da;color:white;cursor:pointer;}
+  #app{display:none;width:100%;height:100%;flex-direction:row;}
+  #sidebar{width:220px;background:#2f3136;display:flex;flex-direction:column;}
+  #sidebar h2{text-align:center;padding:16px 0;font-weight:normal;font-size:1.2em;border-bottom:1px solid #202225;}
+  #serverSearch{padding:8px 10px;margin:10px;border-radius:4px;border:none;width:calc(100% - 40px);}
+  #servers{flex:1;overflow-y:auto;padding:10px;}
+  .server{padding:8px 12px;border-radius:4px;margin-bottom:4px;cursor:pointer;}
+  .server:hover,.server.active{background:#393c43;}
+  #main{flex:1;display:flex;flex-direction:column;}
+  #chatHeader{padding:16px;background:#2f3136;border-bottom:1px solid #202225;font-weight:bold;display:flex;justify-content:space-between;align-items:center;}
+  #messages{flex:1;padding:12px;overflow-y:auto;}
+  .message{margin-bottom:12px;}
+  .message strong{color:#ffa500;}
+  .timestamp{color:#72767d;font-size:0.75em;margin-left:6px;}
+  #inputArea{display:flex;padding:10px;background:#40444b;border-top:1px solid #2f3136;}
+  #messageInput{flex:1;padding:10px;border:none;border-radius:4px;background:#303339;color:#fff;}
+  #messageInput:focus{outline:none;}
+  #sendButton{padding:10px 16px;margin-left:8px;border:none;border-radius:4px;background:#7289da;color:white;cursor:pointer;}
+  #createServerBtn{padding:6px 10px;border:none;border-radius:4px;background:#7289da;color:white;cursor:pointer;margin-left:8px;}
+  #privateChats{margin-top:10px;padding:10px;overflow-y:auto;flex:0 0 120px;border-top:1px solid #202225;}
+  .privateChat{padding:6px;cursor:pointer;border-radius:4px;margin-bottom:4px;}
+  .privateChat:hover,.privateChat.active{background:#393c43;}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h1>Chronochord</h1>
+  <input type="text" id="usernameInput" placeholder="Enter your username">
+  <button onclick="login()">Join Chronochord</button>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <h2>Servers</h2>
+    <input type="text" id="serverSearch" placeholder="Search server..." oninput="filterServers()">
+    <div id="servers"></div>
+    <button id="createServerBtn" onclick="createServer()">+ Create Server</button>
+    <h2 style="margin-top:10px;padding-left:10px;font-size:1em;">Private Chats</h2>
+    <div id="privateChats"></div>
+  </div>
+  <div id="main">
+    <div id="chatHeader">#general</div>
+    <div id="messages"></div>
+    <div id="inputArea">
+      <input type="text" id="messageInput" placeholder="Type a message...">
+      <button id="sendButton" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
+  authDomain: "chronochordbackend.firebaseapp.com",
+  databaseURL: "https://chronochordbackend-default-rtdb.firebaseio.com",
+  projectId: "chronochordbackend",
+  storageBucket: "chronochordbackend.firebasestorage.app",
+  messagingSenderId: "321151014715",
+  appId: "1:321151014715:web:76cec0fb45aa2c0bfbc91e",
+  measurementId: "G-XBRJGYY2G2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+let username = '';
+let userId = '';
+let activeServer = '';
+let activeChannel = 'general';
+let activePrivate = '';
+
+function login(){
+  const input = document.getElementById('usernameInput');
+  if(!input.value.trim()) return alert('Enter a username!');
+  username = input.value.trim();
+  signInAnonymously(auth).then((userCredential)=>{
+    userId = userCredential.user.uid;
+    document.getElementById('login').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initServers();
+    initPrivateChats();
+  });
+}
+
+// Servers
+function initServers(){
+  const serversRef = ref(db,'servers');
+  onValue(serversRef,(snapshot)=>{
+    const servers = snapshot.val()||{};
+    const serversDiv = document.getElementById('servers');
+    serversDiv.innerHTML='';
+    Object.keys(servers).forEach(s=>{
+      const div = document.createElement('div');
+      div.className='server'+(s===activeServer?' active':'');
+      div.textContent=servers[s].name;
+      div.onclick=()=>switchServer(s,servers[s].name);
+      serversDiv.appendChild(div);
+    });
+    if(!activeServer && Object.keys(servers)[0]) switchServer(Object.keys(servers)[0],servers[Object.keys(servers)[0]].name);
+  });
+}
+
+function createServer(){
+  const name = prompt('Server name:');
+  if(!name) return;
+  const newServerRef = push(ref(db,'servers'));
+  set(newServerRef,{name,channels:{general:{messages:{}}}});
+}
+
+function switchServer(id,name){
+  activeServer=id;
+  activeChannel='general';
+  activePrivate='';
+  document.getElementById('chatHeader').textContent='#'+activeChannel+' - '+name;
+  loadMessages();
+}
+
+// Messages
+function loadMessages(){
+  if(activePrivate){
+    const chatRef = ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
+    onValue(chatRef,(snapshot)=>{
+      const msgs = snapshot.val()||{};
+      const messagesDiv=document.getElementById('messages');
+      messagesDiv.innerHTML=Object.values(msgs).map(m=>`<div class="message"><strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}</div>`).join('');
+      messagesDiv.scrollTop=messagesDiv.scrollHeight;
+    });
+  } else {
+    const chatRef = ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
+    onValue(chatRef,(snapshot)=>{
+      const msgs = snapshot.val()||{};
+      const messagesDiv=document.getElementById('messages');
+      messagesDiv.innerHTML=Object.values(msgs).map(m=>`<div class="message"><strong>${m.username}</strong><span class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>: ${m.text}</div>`).join('');
+      messagesDiv.scrollTop=messagesDiv.scrollHeight;
+    });
+  }
+}
+
+function sendMessage(){
+  const input=document.getElementById('messageInput');
+  if(!input.value.trim()) return;
+  const time=Date.now();
+  if(activePrivate){
+    const chatRef=ref(db,`privateChats/${[userId,activePrivate].sort().join('_')}`);
+    const newMsgRef=push(chatRef);
+    set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
+  } else {
+    const chatRef=ref(db,`servers/${activeServer}/channels/${activeChannel}/messages`);
+    const newMsgRef=push(chatRef);
+    set(newMsgRef,{username,text:input.value.trim(),userId,timestamp:time});
+  }
+  input.value='';
+}
+
+// Server search
+function filterServers(){
+  const filter=document.getElementById('serverSearch').value.toLowerCase();
+  document.querySelectorAll('.server').forEach(s=>{
+    s.style.display=s.textContent.toLowerCase().includes(filter)?'block':'none';
+  });
+}
+
+// Private Chats
+function initPrivateChats(){
+  const usersRef=ref(db,'users');
+  set(ref(db,`users/${userId}`),{username});
+  onValue(usersRef,(snapshot)=>{
+    const allUsers=snapshot.val()||{};
+    const privateDiv=document.getElementById('privateChats');
+    privateDiv.innerHTML='';
+    Object.keys(allUsers).forEach(uid=>{
+      if(uid===userId) return;
+      const div=document.createElement('div');
+      div.className='privateChat'+(activePrivate===uid?' active':'');
+      div.textContent=allUsers[uid].username;
+      div.onclick=()=>switchPrivateChat(uid,allUsers[uid].username);
+      privateDiv.appendChild(div);
+    });
+  });
+}
+
+function switchPrivateChat(uid,name){
+  activePrivate=uid;
+  activeServer='';
+  activeChannel='';
+  document.getElementById('chatHeader').textContent='Private Chat with '+name;
+  loadMessages();
+}
+
+</script>
+
+</body>
+</html>
