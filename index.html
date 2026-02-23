@@ -7,7 +7,10 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:flex;height:100vh;overflow:hidden;}
-#app{display:flex;width:100%;height:100%;flex-direction:row;transition:all 0.3s;}
+#unlockScreen{position:absolute;top:0;left:0;width:100%;height:100%;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#unlockScreen input{padding:6px;border:none;border-radius:4px;margin-bottom:8px;width:120px;font-size:1em;}
+#unlockScreen button{padding:6px 10px;border:none;border-radius:4px;background:#2563eb;color:white;cursor:pointer;}
+#app{display:none;width:100%;height:100%;flex-direction:row;transition:all 0.3s;}
 #sidebar{width:200px;background:#1e3a8a;display:flex;flex-direction:column;transition:all 0.3s;}
 #sidebar h2{text-align:center;padding:12px 0;font-weight:normal;font-size:1.1em;border-bottom:1px solid #0d1117;}
 #serverSearch{padding:6px 8px;margin:8px;border-radius:4px;border:none;width:calc(100% - 32px);}
@@ -30,7 +33,6 @@ body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:fle
 #messageInput:focus,#usernamePrompt:focus{outline:none;}
 #sendButton,#createServerBtn{padding:4px 8px;margin-left:4px;border:none;border-radius:4px;background:#2563eb;color:white;cursor:pointer;transition:all 0.2s;font-size:0.85em;}
 #sendButton:hover,#createServerBtn:hover{background:#1d4ed8;}
-.lockIcon{font-size:0.8em;color:#facc15;margin-left:4px;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-thumb{background:#2563eb;border-radius:4px;}
@@ -38,6 +40,15 @@ body{font-family:'Segoe UI',sans-serif;background:#0d1117;color:#fff;display:fle
 </style>
 </head>
 <body>
+
+<!-- Unlock Screen -->
+<div id="unlockScreen">
+  <h2>Enter Website Code</h2>
+  <input type="password" id="websiteCode" placeholder="Enter code">
+  <button id="unlockBtn">Unlock</button>
+</div>
+
+<!-- Main App -->
 <div id="app">
   <div id="sidebar">
     <h2>Servers</h2>
@@ -62,7 +73,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebas
 import { getDatabase, ref, set, push, onValue, get } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
-const firebaseConfig = {
+const app = initializeApp({
   apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
   authDomain: "chronochordbackend.firebaseapp.com",
   databaseURL: "https://chronochordbackend-default-rtdb.firebaseio.com",
@@ -71,28 +82,42 @@ const firebaseConfig = {
   messagingSenderId: "321151014715",
   appId: "1:321151014715:web:76cec0fb45aa2c0bfbc91e",
   measurementId: "G-XBRJGYY2G2"
-};
+});
 
-const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
 let username='', userId='', activeServer='', activeRoom='Chat 1';
 
-signInAnonymously(auth).then(async userCredential=>{
-  userId = userCredential.user.uid;
-  const serversSnap = await get(ref(db,'servers'));
-  if(!serversSnap.exists()){
-    const newServer = push(ref(db,'servers'));
-    await set(newServer,{
-      name:'Default Server',
-      locked:false,
-      code:'',
-      channels:{'Chat 1':{messages:{}},'Chat 2':{messages:{}},'Chat 3':{messages:{}}}
-    });
+const unlockScreen = document.getElementById('unlockScreen');
+const unlockBtn = document.getElementById('unlockBtn');
+unlockBtn.addEventListener('click', ()=>{
+  const code = document.getElementById('websiteCode').value;
+  if(code==='2013'){
+    unlockScreen.style.display='none';
+    document.getElementById('app').style.display='flex';
+    startApp();
+  } else {
+    alert('Incorrect code!');
   }
-  initServers();
 });
+
+function startApp(){
+  signInAnonymously(auth).then(async userCredential=>{
+    userId = userCredential.user.uid;
+    const serversSnap = await get(ref(db,'servers'));
+    if(!serversSnap.exists()){
+      const newServer = push(ref(db,'servers'));
+      await set(newServer,{
+        name:'Default Server',
+        locked:false,
+        code:'',
+        channels:{'Chat 1':{messages:{}},'Chat 2':{messages:{}},'Chat 3':{messages:{}}}
+      });
+    }
+    initServers();
+  });
+}
 
 function initServers(){
   const serversRef = ref(db,'servers');
@@ -104,12 +129,6 @@ function initServers(){
       const div = document.createElement('div');
       div.className='server'+(s===activeServer?' active':'');
       div.textContent=servers[s].name;
-      if(servers[s].locked){
-        const lock = document.createElement('span');
-        lock.textContent='🔒';
-        lock.className='lockIcon';
-        div.appendChild(lock);
-      }
       div.addEventListener('click',()=>enterServer(s,servers[s]));
       serversDiv.appendChild(div);
     });
@@ -122,31 +141,16 @@ function initServers(){
 document.getElementById('createServerBtn').addEventListener('click', async ()=>{
   const name = prompt('Server name:');
   if(!name) return;
-  const lockChoice = prompt('Lock this server? (yes/no)').toLowerCase();
-  let locked=false, code='';
-  if(lockChoice==='yes'){
-    code = prompt('Enter 4-digit code:');
-    if(!/^\d{4}$/.test(code)){ alert('Code must be 4 digits'); return;}
-    locked=true;
-  }
   const newServerRef = push(ref(db,'servers'));
   await set(newServerRef,{
     name,
-    locked,
-    code: locked?code:'',
+    locked:false, // all servers unlocked
+    code:'',
     channels:{'Chat 1':{messages:{}},'Chat 2':{messages:{}},'Chat 3':{messages:{}}}
   });
 });
 
 function enterServer(id,serverObj){
-  if(serverObj.locked){
-    let input = prompt('Enter 4-digit code for this server:');
-    while(input!==serverObj.code){
-      if(input===null) return; // cancel pressed
-      input = prompt('Incorrect code! Enter 4-digit code:');
-    }
-  }
-  // SERVER ACCESS GRANTED
   activeServer=id;
   activeRoom='Chat 1';
   renderRooms(serverObj.channels);
