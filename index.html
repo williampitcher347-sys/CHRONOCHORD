@@ -3,247 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronochord</title>
+<title>Chronochord 2.0</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-
-body{
-  font-family:'Segoe UI',sans-serif;
-  background:linear-gradient(135deg,#0f172a,#020617);
-  color:white;
-  height:100vh;
-  overflow:hidden;
-}
-
-/* Unlock Screen */
-
-#unlockScreen{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  background:radial-gradient(circle at center,#1e3a8a,#020617);
-  animation:fadeIn 1s;
-}
-
-#unlockBox{
-  background:rgba(255,255,255,0.05);
-  padding:30px;
-  border-radius:20px;
-  backdrop-filter:blur(20px);
-  box-shadow:0 0 40px rgba(0,0,0,0.6);
-  text-align:center;
-}
-
-#unlockBox h2{
-  margin-bottom:10px;
-}
-
-#unlockBox input{
-  padding:8px;
-  border:none;
-  border-radius:8px;
-  margin-top:10px;
-  width:150px;
-  text-align:center;
-}
-
-#unlockBox button{
-  margin-top:10px;
-  padding:8px 14px;
-  border:none;
-  border-radius:8px;
-  background:linear-gradient(45deg,#2563eb,#10b981);
-  color:white;
-  cursor:pointer;
-  transition:.25s;
-}
-
-#unlockBox button:hover{
-  transform:scale(1.05);
-}
-
-/* App Layout */
-
-#app{
-  display:none;
-  height:100%;
-  animation:fadeIn .6s;
-}
-
-#sidebar{
-  width:220px;
-  background:rgba(255,255,255,0.05);
-  backdrop-filter:blur(20px);
-  border-right:1px solid rgba(255,255,255,0.08);
-  display:flex;
-  flex-direction:column;
-}
-
-#sidebar h2{
-  padding:16px;
-  text-align:center;
-  font-weight:500;
-  letter-spacing:1px;
-}
-
-#servers{
-  flex:1;
-  overflow:auto;
-  padding:10px;
-}
-
-.server{
-  padding:8px 12px;
-  border-radius:10px;
-  margin-bottom:6px;
-  cursor:pointer;
-  font-size:.9em;
-  background:rgba(255,255,255,0.05);
-  transition:.25s;
-}
-
-.server:hover{
-  background:linear-gradient(45deg,#2563eb,#10b981);
-}
-
-.server.active{
-  background:linear-gradient(45deg,#2563eb,#10b981);
-  box-shadow:0 0 10px rgba(16,185,129,.6);
-}
-
-#createServerBtn{
-  margin:10px;
-  padding:8px;
-  border:none;
-  border-radius:10px;
-  background:linear-gradient(45deg,#2563eb,#10b981);
-  color:white;
-  cursor:pointer;
-}
-
-#rooms{
-  padding:10px;
-  border-top:1px solid rgba(255,255,255,0.08);
-}
-
-.room{
-  padding:6px 10px;
-  border-radius:8px;
-  margin-bottom:5px;
-  cursor:pointer;
-  font-size:.85em;
-  transition:.2s;
-}
-
-.room:hover{
-  background:#10b981;
-}
-
-.room.active{
-  background:#10b981;
-}
-
-/* Main */
-
-#main{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-
-#chatHeader{
-  padding:14px;
-  font-weight:500;
-  background:rgba(255,255,255,0.05);
-  border-bottom:1px solid rgba(255,255,255,0.08);
-  backdrop-filter:blur(20px);
-}
-
-#messages{
-  flex:1;
-  overflow:auto;
-  padding:15px;
-}
-
-.message{
-  max-width:65%;
-  padding:8px 12px;
-  border-radius:12px;
-  margin-bottom:8px;
-  animation:msgIn .25s;
-  font-size:.85em;
-}
-
-.self{
-  margin-left:auto;
-  background:linear-gradient(45deg,#10b981,#059669);
-}
-
-.other{
-  margin-right:auto;
-  background:#374151;
-}
-
-.timestamp{
-  font-size:.6em;
-  opacity:.7;
-  text-align:right;
-}
-
-/* Input */
-
-#inputArea{
-  display:flex;
-  padding:10px;
-  gap:6px;
-  background:rgba(255,255,255,0.05);
-  backdrop-filter:blur(20px);
-}
-
-#inputArea input{
-  padding:8px;
-  border:none;
-  border-radius:8px;
-  background:#020617;
-  color:white;
-}
-
-#messageInput{
-  flex:1;
-}
-
-#sendButton{
-  padding:8px 12px;
-  border:none;
-  border-radius:8px;
-  background:linear-gradient(45deg,#2563eb,#10b981);
-  color:white;
-  cursor:pointer;
-}
-
-/* Animations */
-
-@keyframes fadeIn{
-  from{opacity:0;transform:scale(.95);}
-  to{opacity:1;transform:scale(1);}
-}
-
-@keyframes msgIn{
-  from{opacity:0;transform:translateY(10px);}
-  to{opacity:1;transform:translateY(0);}
-}
-
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+body{height:100vh;background:linear-gradient(135deg,#0f172a,#020617);color:white;overflow:hidden;}
+button{cursor:pointer;transition:all .25s;}
+button:hover{transform:scale(1.05);}
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-thumb{background:#10b981;border-radius:10px;}
+::-webkit-scrollbar-track{background:rgba(255,255,255,0.05);}
+
+/* Unlock Screen */
+#unlockScreen{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle,#1e3a8a,#020617);}
+#unlockBox{padding:30px;background:rgba(255,255,255,0.05);border-radius:20px;backdrop-filter:blur(20px);text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.6);}
+#unlockBox input{padding:8px;border:none;border-radius:8px;margin-top:10px;width:150px;text-align:center;}
+#unlockBox button{margin-top:10px;padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(45deg,#2563eb,#10b981);color:white;}
+
+/* App Layout */
+#app{display:none;height:100%;display:flex;flex-direction:row;transition:all 0.3s;}
+#sidebar{width:220px;background:rgba(255,255,255,0.05);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;}
+#sidebar h2{padding:16px;text-align:center;font-weight:500;letter-spacing:1px;}
+#servers{flex:1;overflow:auto;padding:10px;}
+.server{padding:8px 12px;border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:.9em;background:rgba(255,255,255,0.05);transition:.25s;}
+.server:hover,.server.active{background:linear-gradient(45deg,#2563eb,#10b981);box-shadow:0 0 10px rgba(16,185,129,.6);}
+#createServerBtn{margin:10px;padding:8px;border:none;border-radius:10px;background:linear-gradient(45deg,#2563eb,#10b981);color:white;}
+#rooms{padding:10px;border-top:1px solid rgba(255,255,255,0.08);}
+.room{padding:6px 10px;border-radius:8px;margin-bottom:5px;cursor:pointer;font-size:.85em;transition:.2s;}
+.room:hover,.room.active{background:#10b981;}
+
+/* Users panel */
+#usersPanel{width:180px;background:rgba(255,255,255,0.04);backdrop-filter:blur(20px);border-left:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;}
+#usersPanel h3{padding:14px;font-weight:500;border-bottom:1px solid rgba(255,255,255,0.08);}
+#usersList{flex:1;overflow:auto;padding:10px;}
+.userItem{padding:6px 8px;border-radius:8px;margin-bottom:5px;font-size:.85em;background:rgba(255,255,255,0.05);}
+.userDot{width:8px;height:8px;background:#10b981;border-radius:50%;display:inline-block;margin-right:6px;}
+
+/* Main content */
+#main{flex:1;display:flex;flex-direction:column;}
+#chatHeader{padding:14px;font-weight:500;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(20px);}
+#messages{flex:1;overflow:auto;padding:15px;}
+.message{max-width:65%;padding:8px 12px;border-radius:12px;margin-bottom:8px;animation:msgIn .25s;font-size:.85em;}
+.self{margin-left:auto;background:linear-gradient(45deg,#10b981,#059669);}
+.other{margin-right:auto;background:#374151;}
+.timestamp{font-size:.6em;opacity:.7;text-align:right;line-height:1.1;}
+
+/* Input */
+#inputArea{display:flex;padding:10px;gap:6px;background:rgba(255,255,255,0.05);backdrop-filter:blur(20px);}
+#inputArea input{padding:8px;border:none;border-radius:8px;background:#020617;color:white;}
+#messageInput{flex:1;}
+#sendButton{padding:8px 12px;border:none;border-radius:8px;background:linear-gradient(45deg,#2563eb,#10b981);color:white;}
+
+/* Feed */
+#feedPanel{flex:1;overflow:auto;padding:15px;background:rgba(0,0,0,0.05);}
+.postCard{background:rgba(255,255,255,0.05);padding:10px;border-radius:12px;margin-bottom:12px;backdrop-filter:blur(10px);}
+.postCard:hover{box-shadow:0 0 10px rgba(16,185,129,0.5);}
+
+/* Animations */
+@keyframes msgIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
-
 <body>
 
+<!-- Unlock Screen -->
 <div id="unlockScreen">
   <div id="unlockBox">
     <h2>Chronochord</h2>
@@ -254,33 +79,43 @@ body{
   </div>
 </div>
 
+<!-- App -->
 <div id="app">
-
+  <!-- Sidebar -->
   <div id="sidebar">
     <h2>Servers</h2>
+    <input id="serverSearch" placeholder="Search servers..." style="margin:10px;padding:6px;border-radius:6px;border:none;">
     <div id="servers"></div>
     <button id="createServerBtn">+ Server</button>
     <div id="rooms"></div>
   </div>
 
+  <!-- Chat + Feed -->
   <div id="main">
     <div id="chatHeader">Chat</div>
     <div id="messages"></div>
-
     <div id="inputArea">
       <input id="usernamePrompt" placeholder="Name">
       <input id="messageInput" placeholder="Message">
       <button id="sendButton">Send</button>
     </div>
+
+    <div id="feedPanel"></div>
   </div>
 
+  <!-- Online Users -->
+  <div id="usersPanel">
+    <h3>Online</h3>
+    <div id="usersList"></div>
+  </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, update } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+import { getDatabase, ref, set, push, onValue, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
   authDomain: "chronochordbackend.firebaseapp.com",
@@ -296,23 +131,20 @@ let userId='';
 let activeServer='';
 let activeRoom='Chat 1';
 
+// Unlock site
 window.unlock = async ()=>{
   if(document.getElementById('codeInput').value==='2013'){
     document.getElementById('unlockScreen').style.display='none';
     document.getElementById('app').style.display='flex';
-
     const user = await signInAnonymously(auth);
     userId = user.user.uid;
-
     initServers();
-  }else{
-    alert("Wrong code");
-  }
+  }else alert("Wrong code!");
 };
 
+// Initialize servers
 function initServers(){
   const serversRef = ref(db,'servers');
-
   onValue(serversRef,snap=>{
     const data = snap.val()||{};
     const list = document.getElementById('servers');
@@ -320,115 +152,144 @@ function initServers(){
 
     Object.keys(data).forEach(id=>{
       const s = data[id];
-
-      const div=document.createElement('div');
+      const div = document.createElement('div');
       div.className='server'+(id===activeServer?' active':'');
-      div.textContent=s.name;
-
-      div.onclick=()=>enterServer(id,s);
-
+      div.textContent = s.name;
+      div.onclick = ()=>enterServer(id,s);
       list.appendChild(div);
     });
   });
+
+  document.getElementById('serverSearch').oninput = (e)=>{
+    const filter = e.target.value.toLowerCase();
+    document.querySelectorAll('#servers .server').forEach(s=>{
+      s.style.display = s.textContent.toLowerCase().includes(filter)?'block':'none';
+    });
+  };
 }
 
-document.getElementById('createServerBtn').onclick=async ()=>{
-  const name=prompt("Server name?");
+// Create new server
+document.getElementById('createServerBtn').onclick = async ()=>{
+  const name = prompt("Server name?");
   if(!name) return;
-
-  const newRef=push(ref(db,'servers'));
+  const newRef = push(ref(db,'servers'));
   await set(newRef,{
     name,
-    channels:{
-      "Chat 1":{messages:{}},
-      "Chat 2":{messages:{}},
-      "Chat 3":{messages:{}}
-    }
+    channels:{'Chat 1':{messages:{}},'Chat 2':{messages:{}},'Chat 3':{messages:{}}}
   });
 };
 
-function enterServer(id,server){
+// Enter server
+function enterServer(id, server){
   activeServer=id;
-
   if(!server.channels) server.channels={};
-
-  ["Chat 1","Chat 2","Chat 3"].forEach(r=>{
-    if(!server.channels[r]) server.channels[r]={messages:{}};
-  });
-
+  ['Chat 1','Chat 2','Chat 3'].forEach(r=>{if(!server.channels[r]) server.channels[r]={messages:{}};});
   update(ref(db,'servers/'+id),{channels:server.channels});
-
   renderRooms(server.channels);
-  switchRoom("Chat 1");
+  switchRoom('Chat 1');
+  registerPresence();
+  loadFeed();
 }
 
+// Render rooms
 function renderRooms(channels){
-  const box=document.getElementById('rooms');
-  box.innerHTML='';
-
-  Object.keys(channels||{}).forEach(room=>{
-    const div=document.createElement('div');
-    div.className='room';
-    div.textContent=room;
-
-    div.onclick=()=>switchRoom(room);
-
+  const box = document.getElementById('rooms'); box.innerHTML='';
+  Object.keys(channels||{}).forEach(r=>{
+    const div = document.createElement('div');
+    div.className='room'+(r===activeRoom?' active':'');
+    div.textContent=r;
+    div.onclick=()=>switchRoom(r);
     box.appendChild(div);
   });
 }
 
+// Switch chat room
 function switchRoom(room){
   activeRoom=room;
   document.getElementById('chatHeader').textContent=room;
   loadMessages();
 }
 
+// Load chat messages
 function loadMessages(){
   const msgBox=document.getElementById('messages');
   msgBox.innerHTML='';
-
   if(!activeServer) return;
-
-  const chatRef=ref(db,`servers/${activeServer}/channels/${activeRoom}/messages`);
-
+  const chatRef = ref(db,`servers/${activeServer}/channels/${activeRoom}/messages`);
   onValue(chatRef,snap=>{
-    const data=snap.val()||{};
+    const data = snap.val()||{};
     msgBox.innerHTML='';
-
     Object.values(data).forEach(m=>{
       const div=document.createElement('div');
-
       div.className='message '+(m.userId===userId?'self':'other');
-
-      div.innerHTML=
-      `<b>${m.username}</b><br>${m.text}
-       <div class="timestamp">
-       ${new Date(m.timestamp).toLocaleTimeString()}
-       </div>`;
-
+      div.innerHTML=`<div style="font-weight:600;">${m.username}</div>
+                      <div style="margin-top:2px;line-height:1.4;">${m.text}</div>
+                      <div class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>`;
       msgBox.appendChild(div);
     });
-
-    msgBox.scrollTop=msgBox.scrollHeight;
+    msgBox.scrollTop = msgBox.scrollHeight;
   });
 }
 
-document.getElementById('sendButton').onclick=()=>{
-  const name=document.getElementById('usernamePrompt').value.trim();
-  const text=document.getElementById('messageInput').value.trim();
-
-  if(!name||!text||!activeServer) return;
-
-  const msgRef=push(ref(db,`servers/${activeServer}/channels/${activeRoom}/messages`));
-
-  set(msgRef,{
-    username:name,
-    text,
-    userId,
-    timestamp:Date.now()
-  });
-
+// Send chat message
+document.getElementById('sendButton').onclick = ()=>{
+  const name = document.getElementById('usernamePrompt').value.trim();
+  const text = document.getElementById('messageInput').value.trim();
+  if(!name || !text || !activeServer) return;
+  const msgRef = push(ref(db,`servers/${activeServer}/channels/${activeRoom}/messages`));
+  set(msgRef,{username:name,text,userId,timestamp:Date.now()});
   document.getElementById('messageInput').value='';
+};
+
+// Presence / online users
+function registerPresence(){
+  const name = document.getElementById('usernamePrompt').value.trim()||'Guest';
+  const userRef = ref(db, `presence/${activeServer}/${userId}`);
+  set(userRef,{name,lastActive:Date.now()});
+  onDisconnect(userRef).remove();
+  listenUsers();
+}
+
+function listenUsers(){
+  const list = document.getElementById('usersList');
+  const presRef = ref(db, `presence/${activeServer}`);
+  onValue(presRef,snap=>{
+    const data=snap.val()||{};
+    list.innerHTML='';
+    Object.values(data).forEach(u=>{
+      const div=document.createElement('div');
+      div.className='userItem';
+      div.innerHTML=`<span class="userDot"></span>${u.name}`;
+      list.appendChild(div);
+    });
+  });
+}
+
+// Social feed (posts)
+function loadFeed(){
+  const feedBox = document.getElementById('feedPanel');
+  feedBox.innerHTML='';
+  if(!activeServer) return;
+  const feedRef = ref(db,`servers/${activeServer}/feed`);
+  onValue(feedRef,snap=>{
+    feedBox.innerHTML='';
+    const data = snap.val()||{};
+    Object.values(data).forEach(p=>{
+      const div = document.createElement('div');
+      div.className='postCard';
+      div.innerHTML=`<b>${p.username}</b><p>${p.text}</p>`;
+      feedBox.appendChild(div);
+    });
+  });
+}
+
+// Post to feed
+window.addPost = async (text)=>{
+  if(!activeServer) return alert("Join a server first");
+  const name = document.getElementById('usernamePrompt').value.trim()||'Guest';
+  const feedRef = push(ref(db,`servers/${activeServer}/feed`));
+  await set(feedRef,{username:name,text});
+  document.getElementById('feedPanel').scrollTop = document.getElementById('feedPanel').scrollHeight;
 };
 </script>
 
