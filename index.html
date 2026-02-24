@@ -56,7 +56,7 @@ button:hover{transform:scale(1.05);}
 
 /* Minecraft panel */
 #minecraftPanel{display:none;flex:1;position:relative;}
-#minecraftPanel iframe{width:100%;height:100%;border:none;}
+#minecraftPanel canvas{width:100%;height:100%;border:none;background:#000;}
 #mcBackBtn{position:absolute;top:10px;left:10px;padding:6px 12px;border:none;border-radius:6px;background:#10b981;color:white;cursor:pointer;z-index:10;}
 
 /* Animations */
@@ -70,9 +70,9 @@ button:hover{transform:scale(1.05);}
   <div id="unlockBox">
     <h2>Minecraft Hub</h2>
     <p>Enter Access Code</p>
-    <input id="codeInput" type="password">
+    <input id="codeInput" type="password" placeholder="Enter 2013">
     <br>
-    <button onclick="unlock()">Enter</button>
+    <button id="unlockBtn">Enter</button>
   </div>
 </div>
 
@@ -98,13 +98,14 @@ button:hover{transform:scale(1.05);}
       <button id="sendButton">Send</button>
     </div>
 
+    <!-- Minecraft canvas panel -->
     <div id="minecraftPanel">
       <button id="mcBackBtn">Back</button>
-      <iframe src="https://classic.minecraft.net/"></iframe>
+      <canvas id="mcCanvas"></canvas>
     </div>
   </div>
 
-  <!-- Online Users -->
+  <!-- Users panel -->
   <div id="usersPanel">
     <h3>Online</h3>
     <div id="usersList"></div>
@@ -132,15 +133,25 @@ let activeServer='';
 let activeRoom='Chat 1';
 
 // Unlock
-window.unlock = async ()=>{
-  if(document.getElementById('codeInput').value==='2013'){
-    document.getElementById('unlockScreen').style.display='none';
-    document.getElementById('app').style.display='flex';
+const unlockBtn = document.getElementById('unlockBtn');
+const unlockScreen = document.getElementById('unlockScreen');
+const appEl = document.getElementById('app');
+
+unlockBtn.addEventListener('click', async ()=>{
+  const code = document.getElementById('codeInput').value.trim();
+  if(code === '2013'){
+    unlockScreen.style.display='none';
+    appEl.style.display='flex';
     const user = await signInAnonymously(auth);
     userId = user.user.uid;
     initServers();
   } else alert("Wrong code!");
-};
+});
+
+// Press Enter to unlock
+document.getElementById('codeInput').addEventListener('keypress', e=>{
+  if(e.key==='Enter') unlockBtn.click();
+});
 
 // Servers
 function initServers(){
@@ -262,7 +273,7 @@ function listenUsers(){
   });
 }
 
-// Minecraft button
+// Minecraft panel toggle
 const mcBtn = document.getElementById('minecraftBtn');
 const mcPanel = document.getElementById('minecraftPanel');
 const mcBackBtn = document.getElementById('mcBackBtn');
@@ -271,7 +282,7 @@ mcBtn.onclick = ()=>{
   document.getElementById('messages').style.display='none';
   document.getElementById('inputArea').style.display='none';
   mcPanel.style.display='flex';
-};
+ 
 
 mcBackBtn.onclick = ()=>{
   mcPanel.style.display='none';
