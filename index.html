@@ -3,15 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chronochord 2.0</title>
-
-<!-- Fonts -->
+<title>Chronochord 3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
 body{height:100vh;background:linear-gradient(135deg,#0f172a,#020617);color:white;overflow:hidden;}
-button{cursor:pointer;transition:all .25s;}
+button{cursor:pointer;transition:.25s;}
 button:hover{transform:scale(1.05);}
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-thumb{background:#10b981;border-radius:10px;}
@@ -23,7 +20,7 @@ button:hover{transform:scale(1.05);}
 #unlockBox input{padding:8px;border:none;border-radius:8px;margin-top:10px;width:150px;text-align:center;}
 #unlockBox button{margin-top:10px;padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(45deg,#2563eb,#10b981);color:white;}
 
-/* App Layout */
+/* Layout */
 #app{display:none;height:100%;display:flex;flex-direction:row;transition:all 0.3s;}
 #sidebar{width:220px;background:rgba(255,255,255,0.05);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;}
 #sidebar h2{padding:16px;text-align:center;font-weight:500;letter-spacing:1px;}
@@ -46,21 +43,17 @@ button:hover{transform:scale(1.05);}
 #main{flex:1;display:flex;flex-direction:column;}
 #chatHeader{padding:14px;font-weight:500;background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(20px);}
 #messages{flex:1;overflow:auto;padding:15px;}
-.message{max-width:65%;padding:8px 12px;border-radius:12px;margin-bottom:8px;animation:msgIn .25s;font-size:.85em;}
+.message{max-width:65%;padding:8px 12px;border-radius:12px;margin-bottom:8px;font-size:.85em;animation:msgIn .25s;word-break:break-word;}
 .self{margin-left:auto;background:linear-gradient(45deg,#10b981,#059669);}
 .other{margin-right:auto;background:#374151;}
+.message img, .message video{max-width:100%;border-radius:8px;margin-top:5px;}
 .timestamp{font-size:.6em;opacity:.7;text-align:right;line-height:1.1;}
 
 /* Input */
 #inputArea{display:flex;padding:10px;gap:6px;background:rgba(255,255,255,0.05);backdrop-filter:blur(20px);}
-#inputArea input{padding:8px;border:none;border-radius:8px;background:#020617;color:white;}
+#inputArea input, #fileInput{padding:8px;border:none;border-radius:8px;background:#020617;color:white;}
 #messageInput{flex:1;}
 #sendButton{padding:8px 12px;border:none;border-radius:8px;background:linear-gradient(45deg,#2563eb,#10b981);color:white;}
-
-/* Feed */
-#feedPanel{flex:1;overflow:auto;padding:15px;background:rgba(0,0,0,0.05);}
-.postCard{background:rgba(255,255,255,0.05);padding:10px;border-radius:12px;margin-bottom:12px;backdrop-filter:blur(10px);}
-.postCard:hover{box-shadow:0 0 10px rgba(16,185,129,0.5);}
 
 /* Animations */
 @keyframes msgIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
@@ -68,10 +61,10 @@ button:hover{transform:scale(1.05);}
 </head>
 <body>
 
-<!-- Unlock Screen -->
+<!-- Unlock -->
 <div id="unlockScreen">
   <div id="unlockBox">
-    <h2>Chronochord</h2>
+    <h2>Chronochord 3.0</h2>
     <p>Enter Access Code</p>
     <input id="codeInput" type="password">
     <br>
@@ -90,17 +83,16 @@ button:hover{transform:scale(1.05);}
     <div id="rooms"></div>
   </div>
 
-  <!-- Chat + Feed -->
+  <!-- Chat -->
   <div id="main">
     <div id="chatHeader">Chat</div>
     <div id="messages"></div>
     <div id="inputArea">
-      <input id="usernamePrompt" placeholder="Name">
+      <input id="usernamePrompt" placeholder="Name" style="width:100px;">
       <input id="messageInput" placeholder="Message">
+      <input type="file" id="fileInput">
       <button id="sendButton">Send</button>
     </div>
-
-    <div id="feedPanel"></div>
   </div>
 
   <!-- Online Users -->
@@ -114,24 +106,26 @@ button:hover{transform:scale(1.05);}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import { getDatabase, ref, set, push, onValue, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js";
 
-// Firebase config
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
   authDomain: "chronochordbackend.firebaseapp.com",
   databaseURL: "https://chronochordbackend-default-rtdb.firebaseio.com",
-  projectId: "chronochordbackend"
+  projectId: "chronochordbackend",
+  storageBucket: "chronochordbackend.appspot.com"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 const auth = getAuth(app);
 
 let userId='';
 let activeServer='';
 let activeRoom='Chat 1';
 
-// Unlock site
+// Unlock
 window.unlock = async ()=>{
   if(document.getElementById('codeInput').value==='2013'){
     document.getElementById('unlockScreen').style.display='none';
@@ -139,17 +133,16 @@ window.unlock = async ()=>{
     const user = await signInAnonymously(auth);
     userId = user.user.uid;
     initServers();
-  }else alert("Wrong code!");
+  } else alert("Wrong code!");
 };
 
-// Initialize servers
+// Servers
 function initServers(){
   const serversRef = ref(db,'servers');
   onValue(serversRef,snap=>{
     const data = snap.val()||{};
     const list = document.getElementById('servers');
     list.innerHTML='';
-
     Object.keys(data).forEach(id=>{
       const s = data[id];
       const div = document.createElement('div');
@@ -160,7 +153,7 @@ function initServers(){
     });
   });
 
-  document.getElementById('serverSearch').oninput = (e)=>{
+  document.getElementById('serverSearch').oninput = e=>{
     const filter = e.target.value.toLowerCase();
     document.querySelectorAll('#servers .server').forEach(s=>{
       s.style.display = s.textContent.toLowerCase().includes(filter)?'block':'none';
@@ -168,7 +161,7 @@ function initServers(){
   };
 }
 
-// Create new server
+// Create server
 document.getElementById('createServerBtn').onclick = async ()=>{
   const name = prompt("Server name?");
   if(!name) return;
@@ -188,10 +181,9 @@ function enterServer(id, server){
   renderRooms(server.channels);
   switchRoom('Chat 1');
   registerPresence();
-  loadFeed();
 }
 
-// Render rooms
+// Rooms
 function renderRooms(channels){
   const box = document.getElementById('rooms'); box.innerHTML='';
   Object.keys(channels||{}).forEach(r=>{
@@ -203,16 +195,16 @@ function renderRooms(channels){
   });
 }
 
-// Switch chat room
+// Switch chat
 function switchRoom(room){
   activeRoom=room;
   document.getElementById('chatHeader').textContent=room;
   loadMessages();
 }
 
-// Load chat messages
+// Load messages
 function loadMessages(){
-  const msgBox=document.getElementById('messages');
+  const msgBox = document.getElementById('messages');
   msgBox.innerHTML='';
   if(!activeServer) return;
   const chatRef = ref(db,`servers/${activeServer}/channels/${activeRoom}/messages`);
@@ -220,28 +212,46 @@ function loadMessages(){
     const data = snap.val()||{};
     msgBox.innerHTML='';
     Object.values(data).forEach(m=>{
-      const div=document.createElement('div');
+      const div = document.createElement('div');
       div.className='message '+(m.userId===userId?'self':'other');
-      div.innerHTML=`<div style="font-weight:600;">${m.username}</div>
-                      <div style="margin-top:2px;line-height:1.4;">${m.text}</div>
-                      <div class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>`;
+      let content = `<div style="font-weight:600;">${m.username}</div>`;
+      if(m.text) content += `<div style="margin-top:2px;line-height:1.4;">${m.text}</div>`;
+      if(m.fileUrl){
+        if(m.fileType.startsWith('image/')) content += `<img src="${m.fileUrl}">`;
+        else if(m.fileType.startsWith('video/')) content += `<video src="${m.fileUrl}" controls></video>`;
+      }
+      content += `<div class="timestamp">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>`;
+      div.innerHTML=content;
       msgBox.appendChild(div);
     });
-    msgBox.scrollTop = msgBox.scrollHeight;
   });
 }
 
-// Send chat message
-document.getElementById('sendButton').onclick = ()=>{
+// Send messages
+document.getElementById('sendButton').onclick = async ()=>{
   const name = document.getElementById('usernamePrompt').value.trim();
   const text = document.getElementById('messageInput').value.trim();
-  if(!name || !text || !activeServer) return;
+  const file = document.getElementById('fileInput').files[0];
+  if(!name || (!text && !file) || !activeServer) return;
+
   const msgRef = push(ref(db,`servers/${activeServer}/channels/${activeRoom}/messages`));
-  set(msgRef,{username:name,text,userId,timestamp:Date.now()});
+  const msgData = {username:name,userId,timestamp:Date.now()};
+  if(text) msgData.text = text;
+
+  if(file){
+    const storageRef = sRef(storage, `uploads/${Date.now()}_${file.name}`);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+    msgData.fileUrl = url;
+    msgData.fileType = file.type;
+  }
+
+  await set(msgRef,msgData);
   document.getElementById('messageInput').value='';
+  document.getElementById('fileInput').value='';
 };
 
-// Presence / online users
+// Presence
 function registerPresence(){
   const name = document.getElementById('usernamePrompt').value.trim()||'Guest';
   const userRef = ref(db, `presence/${activeServer}/${userId}`);
@@ -254,7 +264,7 @@ function listenUsers(){
   const list = document.getElementById('usersList');
   const presRef = ref(db, `presence/${activeServer}`);
   onValue(presRef,snap=>{
-    const data=snap.val()||{};
+    const data = snap.val()||{};
     list.innerHTML='';
     Object.values(data).forEach(u=>{
       const div=document.createElement('div');
@@ -264,34 +274,6 @@ function listenUsers(){
     });
   });
 }
-
-// Social feed (posts)
-function loadFeed(){
-  const feedBox = document.getElementById('feedPanel');
-  feedBox.innerHTML='';
-  if(!activeServer) return;
-  const feedRef = ref(db,`servers/${activeServer}/feed`);
-  onValue(feedRef,snap=>{
-    feedBox.innerHTML='';
-    const data = snap.val()||{};
-    Object.values(data).forEach(p=>{
-      const div = document.createElement('div');
-      div.className='postCard';
-      div.innerHTML=`<b>${p.username}</b><p>${p.text}</p>`;
-      feedBox.appendChild(div);
-    });
-  });
-}
-
-// Post to feed
-window.addPost = async (text)=>{
-  if(!activeServer) return alert("Join a server first");
-  const name = document.getElementById('usernamePrompt').value.trim()||'Guest';
-  const feedRef = push(ref(db,`servers/${activeServer}/feed`));
-  await set(feedRef,{username:name,text});
-  document.getElementById('feedPanel').scrollTop = document.getElementById('feedPanel').scrollHeight;
-};
 </script>
-
 </body>
 </html>
