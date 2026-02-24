@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ChronoChordia</title>
+<title>ChronoChord</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
@@ -14,14 +14,8 @@ button:hover{transform:scale(1.05);}
 ::-webkit-scrollbar-thumb{background:#10b981;border-radius:10px;}
 ::-webkit-scrollbar-track{background:rgba(255,255,255,0.05);}
 
-/* Unlock Screen */
-#unlockScreen{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle,#1e3a8a,#020617);}
-#unlockBox{padding:30px;background:rgba(255,255,255,0.05);border-radius:20px;backdrop-filter:blur(20px);text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.6);}
-#unlockBox input{padding:8px;border:none;border-radius:8px;margin-top:10px;width:150px;text-align:center;}
-#unlockBox button{margin-top:10px;padding:8px 14px;border:none;border-radius:8px;background:linear-gradient(45deg,#2563eb,#10b981);color:white;}
-
 /* Layout */
-#app{display:none;height:100%;display:flex;flex-direction:row;transition:all 0.3s;}
+#app{display:flex;height:100%;flex-direction:row;transition:all 0.3s;}
 #sidebar{width:220px;background:rgba(255,255,255,0.05);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;}
 #sidebar h2{padding:16px;text-align:center;font-weight:500;letter-spacing:1px;}
 #servers{flex:1;overflow:auto;padding:10px;}
@@ -65,17 +59,6 @@ button:hover{transform:scale(1.05);}
 </head>
 <body>
 
-<!-- Unlock -->
-<div id="unlockScreen">
-  <div id="unlockBox">
-    <h2>Minecraft Hub</h2>
-    <p>Enter Access Code</p>
-    <input id="codeInput" type="password" placeholder="Enter 2013">
-    <br>
-    <button id="unlockBtn">Enter</button>
-  </div>
-</div>
-
 <!-- App -->
 <div id="app">
   <!-- Sidebar -->
@@ -104,7 +87,7 @@ button:hover{transform:scale(1.05);}
     </div>
   </div>
 
-  <!-- Users -->
+  <!-- Users panel -->
   <div id="usersPanel">
     <h3>Online</h3>
     <div id="usersList"></div>
@@ -116,7 +99,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebas
 import { getDatabase, ref, set, push, onValue, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
-// Firebase config
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDNRjsEudctz8T1iYlz0AapPZPQBgoIwAQ",
   authDomain: "chronochordbackend.firebaseapp.com",
@@ -131,24 +114,8 @@ let userId='';
 let activeServer='';
 let activeRoom='Chat 1';
 
-// Unlock
-const unlockBtn = document.getElementById('unlockBtn');
-const unlockScreen = document.getElementById('unlockScreen');
-const appEl = document.getElementById('app');
-
-unlockBtn.addEventListener('click', async ()=>{
-  const code = document.getElementById('codeInput').value.trim();
-  if(code === '2013'){
-    unlockScreen.style.display='none';
-    appEl.style.display='flex';
-    const user = await signInAnonymously(auth);
-    userId = user.user.uid;
-    initServers();
-  } else alert("Wrong code!");
-});
-document.getElementById('codeInput').addEventListener('keypress', e=>{
-  if(e.key==='Enter') unlockBtn.click();
-});
+// Auto-login anonymously
+signInAnonymously(auth).then(user=>{userId=user.user.uid; initServers();});
 
 // Servers
 function initServers(){
